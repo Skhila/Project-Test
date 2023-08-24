@@ -7,6 +7,7 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.edge.EdgeDriver;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
@@ -14,10 +15,7 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 public class SwoopTest {
 //    Setup Driver
@@ -38,16 +36,20 @@ public class SwoopTest {
         }else {
             throw new Exception("Browser is not correct");
         }
+
+        driver.manage().window().maximize();
         action = new Actions(driver);
         js = (JavascriptExecutor) driver;
     }
 
 //    @BeforeTest
 //    public void setup(){
-//        WebDriverManager.edgedriver().setup();
-//        driver = new EdgeDriver();
+//        WebDriverManager.chromedriver().setup();
+//        driver = new ChromeDriver();
 //        action = new Actions(driver);
 //        js = (JavascriptExecutor) driver;
+//
+//        driver.manage().window().maximize();
 //    }
 
     @Test
@@ -63,11 +65,11 @@ public class SwoopTest {
         movieButton.click();
 
 //        Locate the first movie deal and click buy
-        WebElement firstMovieElement = driver.findElement(By.xpath("//div[@class='movies-deal'][1]/a"));
+        WebElement firstMovieElement = driver.findElement(By.xpath("//div[@class='movies-deal'][2]"));
 
-        action.moveToElement(firstMovieElement).perform();
-        WebElement buyButton = firstMovieElement.findElement(By.xpath("//div[@class='cinema-hover']/a[2]"));
-        buyButton.click();
+        action.moveToElement(firstMovieElement).build().perform();
+        WebElement buyButton = firstMovieElement.findElement(By.cssSelector("div.cinema-hover a:nth-child(2)"));
+        new WebDriverWait(driver, 3).until(ExpectedConditions.elementToBeClickable(buyButton)).click();
 
 //        Locate East-Point button and click
         String cinemaName = "კავეა ისთ ფოინთი";
@@ -80,10 +82,31 @@ public class SwoopTest {
         js.executeScript("arguments[0].scrollIntoView(true);" +
                             "arguments[0].click()", lastDate);
 
-//        Locate the last option and click
-        WebElement lastSeance = driver.findElement(By.cssSelector("div[class*='seanse-details'][aria-expanded=true][aria-hidden=false]:last-child a"));
+//        Check and ensure that only Cavea Eastpoint options were returned
+        List<WebElement> caveaSeances = driver.findElements(By.cssSelector("div[class*='seanse-details'][aria-expanded=true][aria-hidden=false] a"));
+        Iterator<WebElement> iterator = caveaSeances.iterator();
 
-//        Get info about movie for checking later
+        while (iterator.hasNext()) {
+            WebElement seance = iterator.next();
+
+            if (seance.getText().trim().isEmpty()) {
+                iterator.remove();
+            } else {
+                try {
+                    String cinemaActualName = seance.findElement(By.cssSelector("p.cinema-title")).getText();
+                    System.out.println(cinemaActualName);
+                    Assert.assertEquals(cinemaName, cinemaActualName);
+                } catch (AssertionError ae) {
+                    System.out.println("Seance out of Cavea Eastpoint detected!!!");
+                    break;
+                }
+            }
+        }
+
+//        Locate the last option and click
+        WebElement lastSeance = caveaSeances.get(caveaSeances.size()-1);
+
+        // Get info about séance for further checking
         String movieNameBefore = driver.findElement(By.cssSelector("div.info p.name")).getText();
         String seanceDateBefore = lastDate.getText().split(" ")[0];
         String seanceTimeBefore = lastSeance.getText().split("\n")[0];
@@ -92,6 +115,9 @@ public class SwoopTest {
 
         js.executeScript("arguments[0].click()", lastSeance);
 
+
+//        Get info about movie for checking later
+
 //        Locate the popup window and switch to it
         Set<String> windowHandles = driver.getWindowHandles();
         List<String> windowHandlesList = new ArrayList<>(windowHandles);
@@ -99,9 +125,9 @@ public class SwoopTest {
         driver.switchTo().window(popupWindow);
 
 //        Locate info and check if it is correct
-        String allInfoSelector = "//*[@id=\"eventForm\"]/div/div[3]/div[1]";
-        new WebDriverWait(driver, 15).until(ExpectedConditions.presenceOfElementLocated(By.xpath(allInfoSelector)));
-        WebElement allInfo = driver.findElement(By.xpath(allInfoSelector));
+        String allInfoSelector = "div.right-content div.content-header";
+        new WebDriverWait(driver, 15).until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(allInfoSelector)));
+        WebElement allInfo = driver.findElement(By.cssSelector(allInfoSelector));
 
 
 //        Get popup info to check
@@ -128,7 +154,8 @@ public class SwoopTest {
         Random random = new Random();
         int randomVacantPlaceNumber = random.nextInt(numberOfVacantPlaces);
         WebElement randomVacantPlace = vacantPlaces.get(randomVacantPlaceNumber);
-        randomVacantPlace.click();
+        js.executeScript("arguments[0].scrollIntoView(true);" +
+                "arguments[0].click()", randomVacantPlace);
 
 //        Switch to new popup sidebar
         windowHandles = driver.getWindowHandles();
@@ -138,6 +165,26 @@ public class SwoopTest {
 
         WebElement registerButton = driver.findElement(By.cssSelector("p.register"));
         new WebDriverWait(driver, 10).until(ExpectedConditions.elementToBeClickable(registerButton)).click();
+
+//        Let's Register
+//        Locate all the elements
+        WebElement registerContainer = driver.findElement(By.cssSelector("div#register-content-1[aria-hidden=false]"));
+        WebElement firstNameField = registerContainer.findElement(By.cssSelector("div.dashbord-mail input[name='FirstName']"));
+        WebElement lastNameField = registerContainer.findElement(By.cssSelector("div.dashbord-mail input[name='LastName']"));
+        WebElement emailField = registerContainer.findElement(By.cssSelector("div.dashbord-mail input[name='Email']"));
+        WebElement phoneField = registerContainer.findElement(By.cssSelector("div.dashbord-mail input[name='Phone']"));
+        WebElement dateBirthField = registerContainer.findElement(By.cssSelector("div.dashbord-mail input[name='DateBirth']"));
+        Select genderSelector = new Select(driver.findElement(By.cssSelector("div.dashbord-mail select[name='Gender']")));
+        WebElement passwordField = registerContainer.findElement(By.cssSelector("div.dashbord-mail input[name='Password']"));
+        WebElement confirmPasswordField = registerContainer.findElement(By.cssSelector("div.dashbord-mail input[name='ConfirmPassword']"));
+        WebElement agreeToTermsCheckbox = registerContainer.findElement(By.cssSelector("div.confidential-politic input[name='IsAgreedTerms']"));
+        WebElement finishRegistrationButton = registerContainer.findElement(By.cssSelector("div.dashbord-registration input[value='რეგისტრაცია']"));
+
+        firstNameField.sendKeys("Bacho");
+        js.executeScript("arguments[0].scrollIntoView(true);" +
+                "arguments[0].click()", agreeToTermsCheckbox);
+        js.executeScript("arguments[0].scrollIntoView(true);" +
+                "arguments[0].click()", finishRegistrationButton);
 
     }
 
