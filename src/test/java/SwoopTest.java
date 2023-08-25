@@ -1,9 +1,6 @@
 import io.github.bonigarcia.wdm.WebDriverManager;
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.*;
 import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.edge.EdgeDriver;
 import org.openqa.selenium.interactions.Actions;
@@ -18,7 +15,7 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-public class SwoopTest {
+public class SwoopTest{
 //    Setup Driver
     public WebDriver driver;
     public Actions action;
@@ -43,6 +40,11 @@ public class SwoopTest {
         js = (JavascriptExecutor) driver;
     }
 
+    public void performScrollAndClick(WebElement target){
+        js.executeScript("arguments[0].scrollIntoView(true);" +
+                "arguments[0].click()", target);
+    }
+//
 //    @BeforeTest
 //    public void setup(){
 //        WebDriverManager.chromedriver().setup();
@@ -79,8 +81,7 @@ public class SwoopTest {
 
             try{
                 WebElement eastPointElement = driver.findElement(By.xpath("//li/a[text()='" + cinemaName + "']"));
-                js.executeScript("arguments[0].scrollIntoView(true);" +
-                        "arguments[0].click()", eastPointElement);
+                performScrollAndClick(eastPointElement);
                 firstMovieElement = currentMovie;
                 break;
             } catch (NoSuchElementException e){
@@ -92,8 +93,7 @@ public class SwoopTest {
 
 //        Locate the last date and click
         WebElement lastDate = driver.findElement(By.cssSelector("div[aria-hidden=false] div ul li:last-child a"));
-        js.executeScript("arguments[0].scrollIntoView(true);" +
-                            "arguments[0].click()", lastDate);
+        performScrollAndClick(lastDate);
 
 //        Check and ensure that only Cavea Eastpoint options were returned
         List<WebElement> caveaSeances = driver.findElements(By.cssSelector("div[class*='seanse-details'][aria-expanded=true][aria-hidden=false] a"));
@@ -167,8 +167,7 @@ public class SwoopTest {
         Random random = new Random();
         int randomVacantPlaceNumber = random.nextInt(numberOfVacantPlaces);
         WebElement randomVacantPlace = vacantPlaces.get(randomVacantPlaceNumber);
-        js.executeScript("arguments[0].scrollIntoView(true);" +
-                "arguments[0].click()", randomVacantPlace);
+        performScrollAndClick(randomVacantPlace);
 
 //        Switch to new popup sidebar
         windowHandles = driver.getWindowHandles();
@@ -180,7 +179,7 @@ public class SwoopTest {
         new WebDriverWait(driver, 10).until(ExpectedConditions.elementToBeClickable(registerButton)).click();
 
 //        Let's Register
-//        Locate all the elements
+//        Locate all the form elements
         WebElement registerContainer = driver.findElement(By.cssSelector("div#register-content-1[aria-hidden=false]"));
         WebElement firstNameField = registerContainer.findElement(By.cssSelector("div.dashbord-mail input[name='FirstName']"));
         WebElement lastNameField = registerContainer.findElement(By.cssSelector("div.dashbord-mail input[name='LastName']"));
@@ -193,12 +192,42 @@ public class SwoopTest {
         WebElement agreeToTermsCheckbox = registerContainer.findElement(By.cssSelector("div.confidential-politic input[name='IsAgreedTerms']"));
         WebElement finishRegistrationButton = registerContainer.findElement(By.cssSelector("div.dashbord-registration input[value='რეგისტრაცია']"));
 
+//        Complete Registration (Type in invalid mail on purpose)
+//        Fill name, surname, email and phone.
         firstNameField.sendKeys("Bacho");
-        js.executeScript("arguments[0].scrollIntoView(true);" +
-                "arguments[0].click()", agreeToTermsCheckbox);
-        js.executeScript("arguments[0].scrollIntoView(true);" +
-                "arguments[0].click()", finishRegistrationButton);
+        lastNameField.sendKeys("Skhiladze");
+        emailField.sendKeys("InvalidEmail");
+        phoneField.sendKeys("555123456");
 
+//        Choose date of birth
+        String birthDate = "2003-03-11";
+        js.executeScript("arguments[0].valueAsDate= new Date(arguments[1]);", dateBirthField, birthDate);
+
+//        Choose a Gender
+        genderSelector.selectByVisibleText("კაცი");
+
+//        Set and confirm password
+        String password = "password";
+        passwordField.sendKeys(password);
+        confirmPasswordField.sendKeys(password);
+
+//        Agree to terms and conditions
+        performScrollAndClick(agreeToTermsCheckbox);
+
+//        Finish registration
+        performScrollAndClick(finishRegistrationButton);
+
+//        Check if the error message appeared
+        String actualErrorMessage = registerContainer.findElement(By.cssSelector("p#physicalInfoMassage")).getText();
+        String expectedErrorMessage = "მეილის ფორმატი არასწორია!";
+        try {
+            Assert.assertEquals(actualErrorMessage, expectedErrorMessage, "Wrong Error Message!!!");
+            System.out.println("Expected Error Message Appeared 🥳");
+        }catch (AssertionError ae){
+            System.out.println("Wrong Error Message Appeared!!!");
+        }finally {
+            System.out.println("That's all for this project 🥳👌");
+        }
     }
 
 
