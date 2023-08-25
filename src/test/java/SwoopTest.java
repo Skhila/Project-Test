@@ -1,6 +1,7 @@
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -54,28 +55,40 @@ public class SwoopTest {
 
     @Test
     public void swoopTest(){
-//        Navigate to Swoop Website
+//        Navigate to Swoop Website and accept cookies
         driver.get("https://www.swoop.ge");
 
 ////        Locate and click on the "კინო" button
 //        WebElement movieButton = driver.findElement(By.xpath("//li[contains(@class,'MoreCategories')][1]/a"));
         String movieBtn = "კინო";
-        WebElement movieButton = driver.findElement(By.xpath("//li[contains(@class,'MoreCategories')]/a[contains(text(), "+movieBtn+")]"));
+        WebElement movieButton = driver.findElement(By.xpath("//li[contains(@class,'MoreCategories')]/a[contains(normalize-space(), "+movieBtn+")]"));
 
-        movieButton.click();
+        action.moveToElement(movieButton).click().build().perform();
 
-//        Locate the first movie deal and click buy
-        WebElement firstMovieElement = driver.findElement(By.xpath("//div[@class='movies-deal'][2]"));
-
-        action.moveToElement(firstMovieElement).build().perform();
-        WebElement buyButton = firstMovieElement.findElement(By.cssSelector("div.cinema-hover a:nth-child(2)"));
-        new WebDriverWait(driver, 3).until(ExpectedConditions.elementToBeClickable(buyButton)).click();
-
-//        Locate East-Point button and click
+//        Locate the first movie deal which has EastPoint cinema and click buy
+        List<WebElement> movieElements = driver.findElements(By.xpath("//div[@class='movies-deal']"));
+        int movieElementsCount = movieElements.size();
+        WebElement firstMovieElement;
         String cinemaName = "კავეა ისთ ფოინთი";
-        WebElement eastPointElement = driver.findElement(By.xpath("//li/a[text()='" + cinemaName + "']"));
-        js.executeScript("arguments[0].scrollIntoView(true);" +
-                "arguments[0].click()", eastPointElement);
+        for(int i = 1; i <= movieElementsCount; i++){
+            WebElement currentMovie = driver.findElement(By.xpath("//div[@class='movies-deal']["+i+"]"));
+
+            action.moveToElement(currentMovie).build().perform();
+            WebElement buyButton = currentMovie.findElement(By.cssSelector("div.cinema-hover a:nth-child(2)"));
+            new WebDriverWait(driver, 3).until(ExpectedConditions.elementToBeClickable(buyButton)).click();
+
+            try{
+                WebElement eastPointElement = driver.findElement(By.xpath("//li/a[text()='" + cinemaName + "']"));
+                js.executeScript("arguments[0].scrollIntoView(true);" +
+                        "arguments[0].click()", eastPointElement);
+                firstMovieElement = currentMovie;
+                break;
+            } catch (NoSuchElementException e){
+                driver.navigate().back();
+                System.out.println("Current movie doesn't have seances in EastPoint cinema!!!");
+
+            }
+        }
 
 //        Locate the last date and click
         WebElement lastDate = driver.findElement(By.cssSelector("div[aria-hidden=false] div ul li:last-child a"));
@@ -190,8 +203,8 @@ public class SwoopTest {
 
 
 //    Quit Driver
-    @AfterTest
-    public void tearDown() {
-        driver.quit();
-    }
+//    @AfterTest
+//    public void tearDown() {
+//        driver.quit();
+//    }
 }
