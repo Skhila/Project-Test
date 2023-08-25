@@ -40,38 +40,30 @@ public class SwoopTest{
         js = (JavascriptExecutor) driver;
     }
 
+//    Helper Function
     public void performScrollAndClick(WebElement target){
         js.executeScript("arguments[0].scrollIntoView(true);" +
                 "arguments[0].click()", target);
     }
-//
-//    @BeforeTest
-//    public void setup(){
-//        WebDriverManager.chromedriver().setup();
-//        driver = new ChromeDriver();
-//        action = new Actions(driver);
-//        js = (JavascriptExecutor) driver;
-//
-//        driver.manage().window().maximize();
-//    }
 
+//    The test itself
     @Test
     public void swoopTest(){
 //        Navigate to Swoop Website and accept cookies
         driver.get("https://www.swoop.ge");
 
 ////        Locate and click on the "კინო" button
-//        WebElement movieButton = driver.findElement(By.xpath("//li[contains(@class,'MoreCategories')][1]/a"));
-        String movieBtn = "კინო";
-        WebElement movieButton = driver.findElement(By.xpath("//li[contains(@class,'MoreCategories')]/a[contains(normalize-space(), "+movieBtn+")]"));
-
+        String movieBtnExpectedText = "კინო";
+        WebElement movieButton = driver.findElement(By.xpath("//li[contains(@class,'MoreCategories')]/a[contains(normalize-space(), "+movieBtnExpectedText+")]"));
         action.moveToElement(movieButton).click().build().perform();
 
 //        Locate the first movie deal which has EastPoint cinema and click buy
         List<WebElement> movieElements = driver.findElements(By.xpath("//div[@class='movies-deal']"));
         int movieElementsCount = movieElements.size();
-        WebElement firstMovieElement;
         String cinemaName = "კავეა ისთ ფოინთი";
+        //    Iterate through all movies and find the first movie with EastPoint seance. If a movie doesn't
+        //    have east EastPoint, move back to the previous page and check the next movie.
+        //    Stop when the valid movie is found.
         for(int i = 1; i <= movieElementsCount; i++){
             WebElement currentMovie = driver.findElement(By.xpath("//div[@class='movies-deal']["+i+"]"));
 
@@ -82,12 +74,11 @@ public class SwoopTest{
             try{
                 WebElement eastPointElement = driver.findElement(By.xpath("//li/a[text()='" + cinemaName + "']"));
                 performScrollAndClick(eastPointElement);
-                firstMovieElement = currentMovie;
+                System.out.println("Found a movie with EastPoint seances 🥳");
                 break;
             } catch (NoSuchElementException e){
                 driver.navigate().back();
                 System.out.println("Current movie doesn't have seances in EastPoint cinema!!!");
-
             }
         }
 
@@ -95,19 +86,18 @@ public class SwoopTest{
         WebElement lastDate = driver.findElement(By.cssSelector("div[aria-hidden=false] div ul li:last-child a"));
         performScrollAndClick(lastDate);
 
-//        Check and ensure that only Cavea Eastpoint options were returned
+//        Check and ensure that only Cavea EastPoint options were returned
         List<WebElement> caveaSeances = driver.findElements(By.cssSelector("div[class*='seanse-details'][aria-expanded=true][aria-hidden=false] a"));
         Iterator<WebElement> iterator = caveaSeances.iterator();
 
+        //    Iterate through all present seances and ensure that all of them are located in Cavea EastPoint cinema.
         while (iterator.hasNext()) {
             WebElement seance = iterator.next();
-
             if (seance.getText().trim().isEmpty()) {
                 iterator.remove();
             } else {
                 try {
                     String cinemaActualName = seance.findElement(By.cssSelector("p.cinema-title")).getText();
-                    System.out.println(cinemaActualName);
                     Assert.assertEquals(cinemaName, cinemaActualName);
                 } catch (AssertionError ae) {
                     System.out.println("Seance out of Cavea Eastpoint detected!!!");
@@ -116,20 +106,18 @@ public class SwoopTest{
             }
         }
 
-//        Locate the last option and click
+//        Locate the last seance and click
         WebElement lastSeance = caveaSeances.get(caveaSeances.size()-1);
 
-        // Get info about séance for further checking
+        //    Get full info about the chosen seance for further checking
         String movieNameBefore = driver.findElement(By.cssSelector("div.info p.name")).getText();
         String seanceDateBefore = lastDate.getText().split(" ")[0];
         String seanceTimeBefore = lastSeance.getText().split("\n")[0];
         String seanceDateTimeBefore = seanceDateBefore + seanceTimeBefore;
         String cinemaTitleBefore = lastSeance.findElement(By.cssSelector("p.cinema-title")).getText();
 
+        //    Click the last seance
         js.executeScript("arguments[0].click()", lastSeance);
-
-
-//        Get info about movie for checking later
 
 //        Locate the popup window and switch to it
         Set<String> windowHandles = driver.getWindowHandles();
@@ -137,44 +125,43 @@ public class SwoopTest{
         String popupWindow = windowHandlesList.get(0);
         driver.switchTo().window(popupWindow);
 
-//        Locate info and check if it is correct
+//        Locate info on the popup window and check if it is correct
         String allInfoSelector = "div.right-content div.content-header";
         new WebDriverWait(driver, 15).until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(allInfoSelector)));
         WebElement allInfo = driver.findElement(By.cssSelector(allInfoSelector));
-
-
-//        Get popup info to check
+        //    Get popup info
         new WebDriverWait(driver, 5).until(ExpectedConditions.elementToBeClickable(allInfo));
         String movieNameAfter = allInfo.findElement(By.cssSelector("p.movie-title")).getText();
         String cinemaTitleAfter = allInfo.findElement(By.cssSelector("p:nth-child(2)")).getText();
         String[] seanceDateTimeAfterArr = allInfo.findElement(By.cssSelector("p:nth-child(3)")).getText().split(" ");
         String seanceDateTimeAfter = seanceDateTimeAfterArr[0] + seanceDateTimeAfterArr[seanceDateTimeAfterArr.length - 1];
 
-//        Check them
+//        Check if the popup info is equal to the info from chosen seance.
         try{
             Assert.assertEquals(movieNameAfter, movieNameBefore);
             Assert.assertEquals(cinemaTitleAfter, cinemaTitleBefore);
             Assert.assertEquals(seanceDateTimeAfter, seanceDateTimeBefore);
-            System.out.println("Information checking completed successfully!!!");
+            System.out.println("Information checking completed successfully 🥳");
         }catch (AssertionError ae){
-            System.out.println("Invalid Information!!!");
+            System.out.println("Invalid Seance!!!");
         }
 
 //        Locate and choose random vacant place
         List<WebElement> vacantPlaces = driver.findElements(By.cssSelector("div.seat.free"));
         int numberOfVacantPlaces = vacantPlaces.size();
-        // Choose random vacant place
+        //   Choose random vacant place
         Random random = new Random();
         int randomVacantPlaceNumber = random.nextInt(numberOfVacantPlaces);
         WebElement randomVacantPlace = vacantPlaces.get(randomVacantPlaceNumber);
         performScrollAndClick(randomVacantPlace);
 
-//        Switch to new popup sidebar
+//        Switch to new popup sidebar (Login/Registration)
         windowHandles = driver.getWindowHandles();
         windowHandlesList = new ArrayList<>(windowHandles);
         popupWindow = windowHandlesList.get(0);
         driver.switchTo().window(popupWindow);
 
+//        Click the registration button (Registration form will appear)
         WebElement registerButton = driver.findElement(By.cssSelector("p.register"));
         new WebDriverWait(driver, 10).until(ExpectedConditions.elementToBeClickable(registerButton)).click();
 
@@ -211,13 +198,13 @@ public class SwoopTest{
         passwordField.sendKeys(password);
         confirmPasswordField.sendKeys(password);
 
-//        Agree to terms and conditions
+//        Agree to Terms and Conditions
         performScrollAndClick(agreeToTermsCheckbox);
 
 //        Finish registration
         performScrollAndClick(finishRegistrationButton);
 
-//        Check if the error message appeared
+//        Check if the email error message appeared
         String actualErrorMessage = registerContainer.findElement(By.cssSelector("p#physicalInfoMassage")).getText();
         String expectedErrorMessage = "მეილის ფორმატი არასწორია!";
         try {
@@ -226,14 +213,14 @@ public class SwoopTest{
         }catch (AssertionError ae){
             System.out.println("Wrong Error Message Appeared!!!");
         }finally {
+            //    Finish the test peacefully 😉
             System.out.println("That's all for this project 🥳👌");
         }
     }
 
-
 //    Quit Driver
-//    @AfterTest
-//    public void tearDown() {
-//        driver.quit();
-//    }
+    @AfterTest
+    public void tearDown() {
+        driver.quit();
+    }
 }
